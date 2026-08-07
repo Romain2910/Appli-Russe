@@ -306,7 +306,11 @@
     </div>
     <div class="streak-pill"><span class="flame">🔥</span><span><b id="streak-n">0</b> jour(s) de suite</span></div>
     <nav id="navlist"></nav>
-    <div class="sidebar-foot">Progression sauvegardée automatiquement.</div>
+    <div class="sidebar-foot">
+      Progression sauvegardée automatiquement.
+      <div id="user-email-display" style="margin-top:6px; opacity:0.75; font-size:12px;"></div>
+      <button type="button" onclick="handleSignOut()" style="margin-top:10px; width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); background:transparent; cursor:pointer; font-family:inherit;">Se déconnecter</button>
+    </div>
   </aside>
 
   <div id="mobilenav"></div>
@@ -6654,6 +6658,7 @@ async function handleSignIn(){
 
 async function handleSignOut(){
   await sb.auth.signOut();
+  location.reload();
 }
 
 async function ensureProfile(user){
@@ -6669,6 +6674,8 @@ sb.auth.onAuthStateChange((event, session) => {
     currentUserId = session.user.id;
     authScreen.style.display = 'none';
     appScreen.style.display = '';
+    const emailDisplay = document.getElementById('user-email-display');
+    if(emailDisplay) emailDisplay.textContent = session.user.email;
     ensureProfile(session.user).then(()=>{
       if(!appInitialized){
         appInitialized = true;

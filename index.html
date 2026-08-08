@@ -297,6 +297,21 @@
     <button onclick="handleSignUp()" style="flex:1; padding:10px; border-radius:8px; cursor:pointer;">Créer un compte</button>
   </div>
   <p id="auth-error" style="color:#c0392b; margin-top:10px; min-height:1.2em;"></p>
+  <p style="margin-top:6px;">
+    <a href="#" onclick="document.getElementById('auth-forgot').style.display='block'; return false;" style="font-size:13px; opacity:0.75;">Mot de passe oublié ?</a>
+  </p>
+  <div id="auth-forgot" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid #ddd; text-align:left;">
+    <p style="font-size:13px; margin-bottom:8px;">Entre ton email, tu recevras un lien pour réinitialiser ton mot de passe.</p>
+    <input id="forgot-email" type="email" placeholder="Email" style="display:block; width:100%; margin:8px 0; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid #ccc;">
+    <button onclick="handleForgotPassword()" style="width:100%; padding:10px; border-radius:8px; cursor:pointer;">Envoyer le lien</button>
+    <p id="forgot-feedback" style="font-size:13px; margin-top:8px; min-height:1.2em;"></p>
+  </div>
+</div>
+<div id="recovery-screen" style="display:none; max-width:340px; margin:80px auto; text-align:center; font-family:inherit;">
+  <h2 style="margin-bottom:18px;">Nouveau mot de passe</h2>
+  <input id="recovery-password" type="password" placeholder="Nouveau mot de passe (6 caractères min.)" style="display:block; width:100%; margin:8px 0; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid #ccc;">
+  <button onclick="handleUpdatePassword()" style="width:100%; padding:10px; border-radius:8px; cursor:pointer; margin-top:8px;">Enregistrer le mot de passe</button>
+  <p id="recovery-feedback" style="font-size:13px; margin-top:10px; min-height:1.2em; color:#c0392b;"></p>
 </div>
 <div id="app" style="display:none;">
   <aside id="sidebar">
@@ -6661,6 +6676,38 @@ async function handleSignOut(){
   location.reload();
 }
 
+async function handleForgotPassword(){
+  const email = document.getElementById('forgot-email').value.trim();
+  const feedback = document.getElementById('forgot-feedback');
+  feedback.style.color = '';
+  if(!email){ feedback.style.color = '#c0392b'; feedback.textContent = 'Entre ton email.'; return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://spasibapp.study/'
+  });
+  if(error){ feedback.style.color = '#c0392b'; feedback.textContent = error.message; return; }
+  feedback.style.color = '#2e7d32';
+  feedback.textContent = 'Email envoyé — vérifie ta boîte de réception (et les spams).';
+}
+
+async function handleUpdatePassword(){
+  const newPassword = document.getElementById('recovery-password').value;
+  const feedback = document.getElementById('recovery-feedback');
+  if(!newPassword || newPassword.length < 6){
+    feedback.style.color = '#c0392b';
+    feedback.textContent = 'Le mot de passe doit faire au moins 6 caractères.';
+    return;
+  }
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  if(error){
+    feedback.style.color = '#c0392b';
+    feedback.textContent = error.message;
+    return;
+  }
+  feedback.style.color = '#2e7d32';
+  feedback.textContent = 'Mot de passe mis à jour ! Redirection...';
+  setTimeout(()=>{ location.href = 'https://spasibapp.study/'; }, 1500);
+}
+
 async function ensureProfile(user){
   const { error } = await sb.from('profiles')
     .upsert({ id: user.id, username: user.email }, { onConflict: 'id' });
@@ -6669,10 +6716,20 @@ async function ensureProfile(user){
 
 sb.auth.onAuthStateChange((event, session) => {
   const authScreen = document.getElementById('auth-screen');
+  const recoveryScreen = document.getElementById('recovery-screen');
   const appScreen = document.getElementById('app');
+
+  if(event === 'PASSWORD_RECOVERY'){
+    authScreen.style.display = 'none';
+    appScreen.style.display = 'none';
+    recoveryScreen.style.display = 'block';
+    return;
+  }
+
   if(session){
     currentUserId = session.user.id;
     authScreen.style.display = 'none';
+    recoveryScreen.style.display = 'none';
     appScreen.style.display = '';
     const emailDisplay = document.getElementById('user-email-display');
     if(emailDisplay) emailDisplay.textContent = session.user.email;
@@ -6684,6 +6741,7 @@ sb.auth.onAuthStateChange((event, session) => {
     });
   } else {
     currentUserId = null;
+    recoveryScreen.style.display = 'none';
     authScreen.style.display = 'block';
     appScreen.style.display = 'none';
   }

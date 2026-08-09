@@ -7248,6 +7248,7 @@ async function handleSignUp(){
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const errEl = document.getElementById('auth-error');
+  errEl.style.color = '';
   errEl.textContent = '';
   if(!email || !password){ errEl.textContent = 'Email et mot de passe requis.'; return; }
   if(!turnstileToken){ errEl.textContent = 'Merci de valider le captcha.'; return; }
@@ -7257,6 +7258,12 @@ async function handleSignUp(){
   if(data.user){
     const { error: profileError } = await sb.from('profiles').insert({ id: data.user.id, username: email });
     if(profileError) console.warn('Profil non créé :', profileError.message);
+  }
+  if(!data.session){
+    errEl.style.color = '#2e7d32';
+    errEl.textContent = 'Compte créé ! Vérifie ta boîte mail (et les spams) pour confirmer ton adresse avant de te connecter.';
+    document.getElementById('auth-email').value = '';
+    document.getElementById('auth-password').value = '';
   }
 }
 

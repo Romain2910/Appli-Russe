@@ -326,7 +326,7 @@
     <div class="sidebar-foot">
       Progression sauvegardée automatiquement.
       <div id="user-email-display" style="margin-top:6px; opacity:0.75; font-size:12px;"></div>
-      <button type="button" onclick="handleSignOut()" style="margin-top:10px; width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); background:transparent; cursor:pointer; font-family:inherit;">Se déconnecter</button>
+      <nav id="navlist-secondary" style="margin-top:10px; display:flex; flex-direction:column; gap:2px;"></nav>
     </div>
   </aside>
 
@@ -344,6 +344,9 @@
     <section class="view" id="view-oral"></section>
     <section class="view" id="view-exam"></section>
     <section class="view" id="view-mix"></section>
+    <section class="view" id="view-account"></section>
+    <section class="view" id="view-help"></section>
+    <section class="view" id="view-legal"></section>
   </main>
 </div>
 <div id="gloss-tooltip"></div>
@@ -3973,6 +3976,11 @@ const MODULES = [
   {id:'oral', label:'Oral', icon:'mic'},
   {id:'exam', label:'Examens', icon:'award'},
 ];
+const SECONDARY_PAGES = [
+  {id:'account', label:'Mon compte', icon:'square'},
+  {id:'help', label:'Aide', icon:'chat'},
+  {id:'legal', label:'Mentions légales', icon:'file'},
+];
 
 function buildNav(){
   const nav = document.getElementById('navlist');
@@ -3987,6 +3995,16 @@ function buildNav(){
     const b2 = b1.cloneNode(true);
     b2.onclick = ()=>goTo(m.id);
     mob.appendChild(b2);
+  });
+  const navSec = document.getElementById('navlist-secondary');
+  navSec.innerHTML = '';
+  SECONDARY_PAGES.forEach(m=>{
+    const b = document.createElement('button');
+    b.className = 'navbtn'; b.id = 'nav-'+m.id;
+    b.style.fontSize = '13px'; b.style.padding = '7px 10px';
+    b.innerHTML = ic(m.icon, 15) + '<span>'+m.label+'</span>';
+    b.onclick = ()=>goTo(m.id);
+    navSec.appendChild(b);
   });
 }
 function goTo(id){
@@ -4006,6 +4024,126 @@ function goTo(id){
   if(id==='oral') renderOral();
   if(id==='exam') renderExamHome();
   if(id==='mix') renderMixSession();
+  if(id==='account') renderAccount();
+  if(id==='help') renderHelp();
+  if(id==='legal') renderLegal();
+}
+
+/* =========================================================
+   ACCOUNT / HELP / LEGAL PAGES
+   ========================================================= */
+function renderAccount(){
+  const el = document.getElementById('view-account');
+  const email = (sb.auth.getUser ? '' : '');
+  el.innerHTML = `
+    <div class="eyebrow">Paramètres</div>
+    <h1 class="pagetitle">Mon compte</h1>
+    <p class="pagesub">Gère ton compte : email, mot de passe, et suppression de tes données.</p>
+
+    <div class="grid" style="max-width:520px; gap:18px;">
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:4px;">Email connecté</div>
+        <div id="account-email-value" style="color:var(--slate);">…</div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:10px;">Changer de mot de passe</div>
+        <input id="account-new-password" type="password" placeholder="Nouveau mot de passe (6 caractères min.)" style="display:block; width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid var(--line); font-family:inherit;">
+        <button class="btn" onclick="handleChangePasswordLoggedIn()">Mettre à jour le mot de passe</button>
+        <p id="account-password-feedback" style="font-size:13px; margin-top:8px; min-height:1.2em;"></p>
+      </div>
+
+      <div class="card">
+        <button class="btn secondary" onclick="handleSignOut()">Se déconnecter</button>
+      </div>
+
+      <div class="card" style="border-color:var(--rust);">
+        <div style="font-weight:700; margin-bottom:4px; color:var(--rust);">Zone dangereuse</div>
+        <p style="font-size:13.5px; color:var(--slate); margin-bottom:10px;">
+          Supprime définitivement toute ta progression (grammaire, vocabulaire, examens, etc.).
+          Cette action est irréversible.
+        </p>
+        <p style="font-size:13px; margin-bottom:6px;">Tape <b>SUPPRIMER</b> pour confirmer :</p>
+        <input id="account-delete-confirm" type="text" placeholder="SUPPRIMER" style="display:block; width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid var(--line); font-family:inherit;">
+        <button class="btn" style="background:var(--rust); border-color:var(--rust);" onclick="handleDeleteAccount()">Supprimer mon compte et mes données</button>
+        <p id="account-delete-feedback" style="font-size:13px; margin-top:8px; min-height:1.2em;"></p>
+      </div>
+    </div>
+  `;
+  sb.auth.getUser().then(({data})=>{
+    const v = document.getElementById('account-email-value');
+    if(v && data && data.user) v.textContent = data.user.email;
+  });
+}
+
+async function handleChangePasswordLoggedIn(){
+  const newPassword = document.getElementById('account-new-password').value;
+  const feedback = document.getElementById('account-password-feedback');
+  feedback.style.color = '';
+  if(!newPassword || newPassword.length < 6){
+    feedback.style.color = '#c0392b';
+    feedback.textContent = 'Le mot de passe doit faire au moins 6 caractères.';
+    return;
+  }
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  if(error){
+    feedback.style.color = '#c0392b';
+    feedback.textContent = error.message;
+    return;
+  }
+  feedback.style.color = '#2e7d32';
+  feedback.textContent = 'Mot de passe mis à jour.';
+  document.getElementById('account-new-password').value = '';
+}
+
+async function handleDeleteAccount(){
+  const confirmVal = document.getElementById('account-delete-confirm').value.trim();
+  const feedback = document.getElementById('account-delete-feedback');
+  feedback.style.color = '#c0392b';
+  if(confirmVal !== 'SUPPRIMER'){
+    feedback.textContent = 'Tape exactement SUPPRIMER dans le champ pour confirmer.';
+    return;
+  }
+  if(!currentUserId){ feedback.textContent = 'Erreur : utilisateur non identifié.'; return; }
+  feedback.style.color = '';
+  feedback.textContent = 'Suppression en cours…';
+  try{
+    const { error: e1 } = await sb.from('user_state').delete().eq('user_id', currentUserId);
+    if(e1) throw e1;
+    const { error: e2 } = await sb.from('profiles').delete().eq('id', currentUserId);
+    if(e2) throw e2;
+    feedback.style.color = '#2e7d32';
+    feedback.textContent = 'Tes données ont été supprimées. Déconnexion…';
+    setTimeout(()=>{ handleSignOut(); }, 1500);
+  }catch(e){
+    feedback.style.color = '#c0392b';
+    feedback.textContent = 'Erreur lors de la suppression : ' + (e.message || e);
+  }
+}
+
+function renderHelp(){
+  const el = document.getElementById('view-help');
+  el.innerHTML = `
+    <div class="eyebrow">Support</div>
+    <h1 class="pagetitle">Aide</h1>
+    <p class="pagesub">Une question, un bug, une suggestion ?</p>
+    <div class="card" style="max-width:520px;">
+      <p style="margin-bottom:10px;">Écris-nous à :</p>
+      <p style="font-weight:700; font-size:16px;">contact@spasibapp.study</p>
+    </div>
+  `;
+}
+
+function renderLegal(){
+  const el = document.getElementById('view-legal');
+  el.innerHTML = `
+    <div class="eyebrow">Informations</div>
+    <h1 class="pagetitle">Mentions légales</h1>
+    <p class="pagesub">Mentions légales, conditions d'utilisation et politique de confidentialité de Spasibapp.</p>
+    <div class="card" style="max-width:680px; line-height:1.7; font-size:14.5px;">
+      <p style="opacity:.6; font-style:italic;">Contenu à compléter.</p>
+    </div>
+  `;
 }
 
 /* =========================================================

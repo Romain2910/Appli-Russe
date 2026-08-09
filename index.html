@@ -602,7 +602,7 @@
       <div class="auth-brand">Spasibapp</div>
       <h2 class="auth-title">Nouveau mot de passe</h2>
       <p class="auth-sub">Choisis un nouveau mot de passe pour ton compte.</p>
-      <input id="recovery-password" class="auth-input" type="password" placeholder="Nouveau mot de passe (6 caractères min.)">
+      <input id="recovery-password" class="auth-input" type="password" placeholder="Nouveau mot de passe (8 caractères min.)">
       <button class="btn amber" style="width:100%; justify-content:center; margin-top:6px;" onclick="handleUpdatePassword()">Enregistrer le mot de passe</button>
       <p id="recovery-feedback" class="auth-error"></p>
     </div>
@@ -4341,7 +4341,7 @@ function renderAccount(){
 
       <div class="card">
         <div style="font-weight:700; margin-bottom:10px;">Changer de mot de passe</div>
-        <input id="account-new-password" type="password" placeholder="Nouveau mot de passe (6 caractères min.)" style="display:block; width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid var(--line); font-family:inherit;">
+        <input id="account-new-password" type="password" placeholder="Nouveau mot de passe (8 caractères min.)" style="display:block; width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid var(--line); font-family:inherit;">
         <button class="btn" onclick="handleChangePasswordLoggedIn()">Mettre à jour le mot de passe</button>
         <p id="account-password-feedback" style="font-size:13px; margin-top:8px; min-height:1.2em;"></p>
       </div>
@@ -4373,9 +4373,9 @@ async function handleChangePasswordLoggedIn(){
   const newPassword = document.getElementById('account-new-password').value;
   const feedback = document.getElementById('account-password-feedback');
   feedback.style.color = '';
-  if(!newPassword || newPassword.length < 6){
+  if(!newPassword || newPassword.length < 8){
     feedback.style.color = '#c0392b';
-    feedback.textContent = 'Le mot de passe doit faire au moins 6 caractères.';
+    feedback.textContent = 'Le mot de passe doit faire au moins 8 caractères.';
     return;
   }
   const { error } = await sb.auth.updateUser({ password: newPassword });
@@ -7296,9 +7296,9 @@ async function handleForgotPassword(){
 async function handleUpdatePassword(){
   const newPassword = document.getElementById('recovery-password').value;
   const feedback = document.getElementById('recovery-feedback');
-  if(!newPassword || newPassword.length < 6){
+  if(!newPassword || newPassword.length < 8){
     feedback.style.color = '#c0392b';
-    feedback.textContent = 'Le mot de passe doit faire au moins 6 caractères.';
+    feedback.textContent = 'Le mot de passe doit faire au moins 8 caractères.';
     return;
   }
   const { error } = await sb.auth.updateUser({ password: newPassword });

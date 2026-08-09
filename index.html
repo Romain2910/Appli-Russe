@@ -286,12 +286,14 @@
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 <div id="auth-screen" style="display:none; max-width:340px; margin:80px auto; text-align:center; font-family:inherit;">
   <h2 style="margin-bottom:18px;">Русский. — Connexion</h2>
   <input id="auth-email" type="email" placeholder="Email" style="display:block; width:100%; margin:8px 0; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid #ccc;">
   <input id="auth-password" type="password" placeholder="Mot de passe" style="display:block; width:100%; margin:8px 0; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid #ccc;">
+  <div class="cf-turnstile" data-sitekey="0x4AAAAAAELJjrQeBdR6kQO5" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileExpired" style="margin:12px auto; display:flex; justify-content:center;"></div>
   <div style="display:flex; gap:8px; margin-top:12px;">
     <button onclick="handleSignIn()" style="flex:1; padding:10px; border-radius:8px; cursor:pointer;">Se connecter</button>
     <button onclick="handleSignUp()" style="flex:1; padding:10px; border-radius:8px; cursor:pointer;">Créer un compte</button>
@@ -6646,6 +6648,18 @@ const SUPABASE_KEY = 'sb_publishable_vtmJpBmw_SdJ6EnxalPwfQ_0csSK8Sc';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let appInitialized = false;
+let turnstileToken = null;
+
+function onTurnstileSuccess(token){
+  turnstileToken = token;
+}
+function onTurnstileExpired(){
+  turnstileToken = null;
+}
+function resetTurnstile(){
+  turnstileToken = null;
+  if(window.turnstile){ turnstile.reset(); }
+}
 
 async function handleSignUp(){
   const email = document.getElementById('auth-email').value.trim();
@@ -6653,7 +6667,9 @@ async function handleSignUp(){
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
   if(!email || !password){ errEl.textContent = 'Email et mot de passe requis.'; return; }
-  const { data, error } = await sb.auth.signUp({ email, password });
+  if(!turnstileToken){ errEl.textContent = 'Merci de valider le captcha.'; return; }
+  const { data, error } = await sb.auth.signUp({ email, password, options: { captchaToken: turnstileToken } });
+  resetTurnstile();
   if(error){ errEl.textContent = error.message; return; }
   if(data.user){
     const { error: profileError } = await sb.from('profiles').insert({ id: data.user.id, username: email });
@@ -6667,7 +6683,9 @@ async function handleSignIn(){
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
   if(!email || !password){ errEl.textContent = 'Email et mot de passe requis.'; return; }
-  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(!turnstileToken){ errEl.textContent = 'Merci de valider le captcha.'; return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password, options: { captchaToken: turnstileToken } });
+  resetTurnstile();
   if(error){ errEl.textContent = error.message; }
 }
 
@@ -6681,9 +6699,12 @@ async function handleForgotPassword(){
   const feedback = document.getElementById('forgot-feedback');
   feedback.style.color = '';
   if(!email){ feedback.style.color = '#c0392b'; feedback.textContent = 'Entre ton email.'; return; }
+  if(!turnstileToken){ feedback.style.color = '#c0392b'; feedback.textContent = 'Merci de valider le captcha.'; return; }
   const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://spasibapp.study/'
+    redirectTo: 'https://spasibapp.study/',
+    captchaToken: turnstileToken
   });
+  resetTurnstile();
   if(error){ feedback.style.color = '#c0392b'; feedback.textContent = error.message; return; }
   feedback.style.color = '#2e7d32';
   feedback.textContent = 'Email envoyé — vérifie ta boîte de réception (et les spams).';

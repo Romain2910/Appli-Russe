@@ -666,6 +666,9 @@ const ICONS = {
   refresh: '<polyline points="1 4 1 10 7 10"/><path d="M3.5 15a9 9 0 1 0 1.5-9.5L1 10"/>',
 };
 function ic(name, size=18){ return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`; }
+function escapeHTML(str){
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 /* =========================================================
    STORAGE HELPERS
@@ -6097,14 +6100,14 @@ function renderVerbsHome(){
     const matches = ALL_VERBS.filter(v=> deburr(v.fr).includes(q));
     if(matches.length===0){
       results.innerHTML = `
-        <div class="verb-result-row" style="cursor:default; color:var(--slate);">Aucun verbe trouvé pour « ${input.value} » dans les ${ALL_VERBS.length} verbes de base.</div>
-        <div class="verb-result-row" id="verb-ai-search" style="cursor:pointer; color:var(--amber-deep); font-weight:600;">🌐 Chercher « ${input.value} » (traduction + conjugaison estimée) →</div>
+        <div class="verb-result-row" style="cursor:default; color:var(--slate);">Aucun verbe trouvé pour « ${escapeHTML(input.value)} » dans les ${ALL_VERBS.length} verbes de base.</div>
+        <div class="verb-result-row" id="verb-ai-search" style="cursor:pointer; color:var(--amber-deep); font-weight:600;">🌐 Chercher « ${escapeHTML(input.value)} » (traduction + conjugaison estimée) →</div>
       `;
       const aiRow = document.getElementById('verb-ai-search');
       if(aiRow) aiRow.onclick = ()=>{ searchVerbWithAI(input.value.trim()); results.style.display='none'; input.value=''; };
     } else {
       results.innerHTML = matches.map(v=>`<div class="verb-result-row" data-id="${v.id}"><span class="fr">${v.fr}</span><span class="ru">${v.ru}</span></div>`).join('')
-        + `<div class="verb-result-row" id="verb-ai-search" style="cursor:pointer; color:var(--amber-deep); font-weight:600;">🌐 Pas le bon résultat ? Chercher « ${input.value} » (traduction estimée) →</div>`;
+        + `<div class="verb-result-row" id="verb-ai-search" style="cursor:pointer; color:var(--amber-deep); font-weight:600;">🌐 Pas le bon résultat ? Chercher « ${escapeHTML(input.value)} » (traduction estimée) →</div>`;
       results.querySelectorAll('.verb-result-row[data-id]').forEach(row=>{
         row.onclick = ()=>{ goToVerbById(row.dataset.id); results.style.display='none'; input.value=''; };
       });

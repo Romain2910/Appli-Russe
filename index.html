@@ -570,28 +570,42 @@
     <div class="auth-card">
       <a href="#" class="auth-back" onclick="showLanding(); return false;">← Retour à l'accueil</a>
       <div class="auth-brand">Spasibapp</div>
-      <h2 class="auth-title">Connexion</h2>
-      <p class="auth-sub">Retrouve ta progression, où que tu sois.</p>
 
-      <input id="auth-email" class="auth-input" type="email" placeholder="Email">
-      <input id="auth-password" class="auth-input" type="password" placeholder="Mot de passe">
-      <div class="cf-turnstile" data-sitekey="0x4AAAAAAELJjrQeBdR6kQO5" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileExpired" style="margin:14px auto 0; display:flex; justify-content:center;"></div>
+      <div id="auth-fields-block">
+        <h2 class="auth-title">Connexion</h2>
+        <p class="auth-sub">Retrouve ta progression, où que tu sois.</p>
 
-      <div class="auth-btn-row">
-        <button class="btn secondary" onclick="handleSignIn()">Se connecter</button>
-        <button class="btn amber" onclick="handleSignUp()">Créer un compte</button>
+        <input id="auth-email" class="auth-input" type="email" placeholder="Email">
+        <input id="auth-password" class="auth-input" type="password" placeholder="Mot de passe">
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAELJjrQeBdR6kQO5" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-error-callback="onTurnstileExpired" style="margin:14px auto 0; display:flex; justify-content:center;"></div>
+
+        <div class="auth-btn-row">
+          <button class="btn secondary" onclick="handleSignIn()">Se connecter</button>
+          <button class="btn amber" onclick="handleSignUp()">Créer un compte</button>
+        </div>
+        <p id="auth-error" class="auth-error"></p>
+
+        <div class="auth-link-row">
+          <a href="#" onclick="document.getElementById('auth-forgot').style.display='block'; return false;">Mot de passe oublié ?</a>
+        </div>
+
+        <div id="auth-forgot" class="auth-forgot-box" style="display:none;">
+          <p>Entre ton email, tu recevras un lien pour réinitialiser ton mot de passe.</p>
+          <input id="forgot-email" class="auth-input" type="email" placeholder="Email">
+          <button class="btn secondary" style="width:100%; justify-content:center;" onclick="handleForgotPassword()">Envoyer le lien</button>
+          <p id="forgot-feedback" class="auth-feedback"></p>
+        </div>
       </div>
-      <p id="auth-error" class="auth-error"></p>
 
-      <div class="auth-link-row">
-        <a href="#" onclick="document.getElementById('auth-forgot').style.display='block'; return false;">Mot de passe oublié ?</a>
-      </div>
-
-      <div id="auth-forgot" class="auth-forgot-box" style="display:none;">
-        <p>Entre ton email, tu recevras un lien pour réinitialiser ton mot de passe.</p>
-        <input id="forgot-email" class="auth-input" type="email" placeholder="Email">
-        <button class="btn secondary" style="width:100%; justify-content:center;" onclick="handleForgotPassword()">Envoyer le lien</button>
-        <p id="forgot-feedback" class="auth-feedback"></p>
+      <div id="auth-confirm-block" style="display:none;">
+        <h2 class="auth-title">Vérifie ton email</h2>
+        <p class="auth-sub">On a envoyé un code à 6 chiffres à <b id="confirm-target-email"></b>. Entre-le ci-dessous pour activer ton compte.</p>
+        <input id="confirm-code" class="auth-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="text-align:center; letter-spacing:6px; font-size:20px; font-weight:700;">
+        <button class="btn amber" style="width:100%; justify-content:center; margin-top:6px;" onclick="handleConfirmCode()">Valider mon compte</button>
+        <p id="confirm-feedback" class="auth-error"></p>
+        <div class="auth-link-row">
+          <a href="#" onclick="handleResendCode(); return false;">Renvoyer le code</a>
+        </div>
       </div>
     </div>
   </div>
@@ -4586,6 +4600,8 @@ function showLanding(){
 function goToAuth(){
   document.getElementById('landing-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'block';
+  document.getElementById('auth-fields-block').style.display = 'block';
+  document.getElementById('auth-confirm-block').style.display = 'none';
   window.scrollTo(0,0);
 }
 function openLegalOverlay(tab){
@@ -7247,6 +7263,8 @@ function resetTurnstile(){
   if(window.turnstile){ turnstile.reset(); }
 }
 
+let pendingConfirmEmail = null;
+
 async function handleSignUp(){
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
@@ -7263,11 +7281,39 @@ async function handleSignUp(){
     if(profileError) console.warn('Profil non créé :', profileError.message);
   }
   if(!data.session){
-    errEl.style.color = '#2e7d32';
-    errEl.textContent = 'Compte créé ! Vérifie ta boîte mail (et les spams) pour confirmer ton adresse avant de te connecter.';
-    document.getElementById('auth-email').value = '';
-    document.getElementById('auth-password').value = '';
+    pendingConfirmEmail = email;
+    document.getElementById('confirm-target-email').textContent = email;
+    document.getElementById('auth-fields-block').style.display = 'none';
+    document.getElementById('auth-confirm-block').style.display = 'block';
+    document.getElementById('confirm-feedback').textContent = '';
+    document.getElementById('confirm-code').value = '';
+    document.getElementById('confirm-code').focus();
   }
+}
+
+async function handleConfirmCode(){
+  const code = document.getElementById('confirm-code').value.trim();
+  const feedback = document.getElementById('confirm-feedback');
+  feedback.style.color = '';
+  feedback.textContent = '';
+  if(!pendingConfirmEmail){ feedback.textContent = 'Session expirée, recommence l\'inscription.'; return; }
+  if(!code || code.length < 6){ feedback.textContent = 'Entre le code à 6 chiffres reçu par email.'; return; }
+  const { error } = await sb.auth.verifyOtp({ email: pendingConfirmEmail, token: code, type: 'signup' });
+  if(error){ feedback.textContent = error.message; return; }
+  feedback.style.color = '#2e7d32';
+  feedback.textContent = 'Compte validé ! Connexion…';
+  // onAuthStateChange prendra le relais automatiquement une fois la session établie
+}
+
+async function handleResendCode(){
+  const feedback = document.getElementById('confirm-feedback');
+  if(!pendingConfirmEmail){ feedback.textContent = 'Session expirée, recommence l\'inscription.'; return; }
+  feedback.style.color = '';
+  feedback.textContent = 'Renvoi du code…';
+  const { error } = await sb.auth.resend({ type: 'signup', email: pendingConfirmEmail });
+  if(error){ feedback.style.color = '#c0392b'; feedback.textContent = error.message; return; }
+  feedback.style.color = '#2e7d32';
+  feedback.textContent = 'Nouveau code envoyé.';
 }
 
 async function handleSignIn(){

@@ -599,8 +599,8 @@
 
       <div id="auth-confirm-block" style="display:none;">
         <h2 class="auth-title">Vérifie ton email</h2>
-        <p class="auth-sub">On a envoyé un code à 6 chiffres à <b id="confirm-target-email"></b>. Entre-le ci-dessous pour activer ton compte.</p>
-        <input id="confirm-code" class="auth-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="text-align:center; letter-spacing:6px; font-size:20px; font-weight:700;">
+        <p class="auth-sub">On a envoyé un code à <b id="confirm-target-email"></b>. Entre-le ci-dessous pour activer ton compte.</p>
+        <input id="confirm-code" class="auth-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code reçu par email" style="text-align:center; letter-spacing:4px; font-size:19px; font-weight:700;">
         <button class="btn amber" style="width:100%; justify-content:center; margin-top:6px;" onclick="handleConfirmCode()">Valider mon compte</button>
         <p id="confirm-feedback" class="auth-error"></p>
         <div class="auth-link-row">
@@ -4358,6 +4358,7 @@ function renderAccount(){
 
       <div class="card">
         <div style="font-weight:700; margin-bottom:10px;">Changer de mot de passe</div>
+        <input id="account-current-password" type="password" placeholder="Mot de passe actuel" style="display:block; width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid var(--line); font-family:inherit;">
         <input id="account-new-password" type="password" placeholder="Nouveau mot de passe (8 caractères min.)" style="display:block; width:100%; margin-bottom:8px; padding:10px; box-sizing:border-box; border-radius:8px; border:1px solid var(--line); font-family:inherit;">
         <button class="btn" onclick="handleChangePasswordLoggedIn()">Mettre à jour le mot de passe</button>
         <p id="account-password-feedback" style="font-size:13px; margin-top:8px; min-height:1.2em;"></p>
@@ -4387,15 +4388,21 @@ function renderAccount(){
 }
 
 async function handleChangePasswordLoggedIn(){
+  const currentPassword = document.getElementById('account-current-password').value;
   const newPassword = document.getElementById('account-new-password').value;
   const feedback = document.getElementById('account-password-feedback');
   feedback.style.color = '';
+  if(!currentPassword){
+    feedback.style.color = '#c0392b';
+    feedback.textContent = 'Entre ton mot de passe actuel.';
+    return;
+  }
   if(!newPassword || newPassword.length < 8){
     feedback.style.color = '#c0392b';
     feedback.textContent = 'Le mot de passe doit faire au moins 8 caractères.';
     return;
   }
-  const { error } = await sb.auth.updateUser({ password: newPassword });
+  const { error } = await sb.auth.updateUser({ password: newPassword, current_password: currentPassword });
   if(error){
     feedback.style.color = '#c0392b';
     feedback.textContent = error.message;
@@ -4403,6 +4410,7 @@ async function handleChangePasswordLoggedIn(){
   }
   feedback.style.color = '#2e7d32';
   feedback.textContent = 'Mot de passe mis à jour.';
+  document.getElementById('account-current-password').value = '';
   document.getElementById('account-new-password').value = '';
 }
 
@@ -7297,7 +7305,7 @@ async function handleConfirmCode(){
   feedback.style.color = '';
   feedback.textContent = '';
   if(!pendingConfirmEmail){ feedback.textContent = 'Session expirée, recommence l\'inscription.'; return; }
-  if(!code || code.length < 6){ feedback.textContent = 'Entre le code à 6 chiffres reçu par email.'; return; }
+  if(!code){ feedback.textContent = 'Entre le code reçu par email.'; return; }
   const { error } = await sb.auth.verifyOtp({ email: pendingConfirmEmail, token: code, type: 'signup' });
   if(error){ feedback.textContent = error.message; return; }
   feedback.style.color = '#2e7d32';

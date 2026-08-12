@@ -290,11 +290,17 @@
     #app{ flex-direction:column; }
     #sidebar{ display:none; }
     #mobilenav{
-      display:flex; overflow-x:auto; gap:4px; background:var(--ink); padding:10px 12px; position:sticky; top:0; z-index:10;
+      display:flex; overflow-x:auto; gap:4px; background:var(--ink); padding:10px 12px;
+      padding-bottom:calc(10px + env(safe-area-inset-bottom));
+      position:fixed; left:0; right:0; bottom:0; top:auto; z-index:50;
       flex-shrink:0; width:100%; box-sizing:border-box;
+      border-top:1px solid #2B2E3A;
     }
     #mobilenav .navbtn{ flex-shrink:0; white-space:nowrap; }
-    main{ width:100%; box-sizing:border-box; max-width:100%; margin:0; padding:22px 18px 50px; }
+    main{
+      width:100%; box-sizing:border-box; max-width:100%; margin:0;
+      padding:22px 18px calc(80px + env(safe-area-inset-bottom));
+    }
     .grid-3{ grid-template-columns:1fr 1fr; }
   }
 
